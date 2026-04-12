@@ -20,8 +20,13 @@ app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
+
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:5173"];
+
 const io = new Server(server, {
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }
+  cors: { origin: ALLOWED_ORIGINS, methods: ["GET", "POST"] }
 });
 
 // rooms: Map<roomId, { id, hostKey, hostPlayerId, players[], impostors, maxPlayers, round, finished, votes, voters, lastPhase }>
