@@ -1,0 +1,378 @@
+// web/src/pages/Room.jsx
+// -----------------------------------------------------------------------------
+// Room con look & feel mejorado (clases de styles.css) y lógica actual:
+// - Host robusto (hostKey + socket.id === hostPlayerId).
+// - Votación con <select>, conteo y resultado.
+// - "Continuar ahora" SOLO host (ACK + broadcast).
+// - Secciones "En juego" y "Eliminados".
+// - Si estás eliminado: banner y no puedes votar.
+// -----------------------------------------------------------------------------
+
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { socket } from "../socket";
+
+export default function Room() {
+  const { roomId } = useParams();
+  const { state } = useLocation();
+  const navigate = useNavigate();
+
+  // Clave de host guardada por sala (la setea el flujo de creación)
+  const storedHostKey = localStorage.getItem(`hostKey:${roomId}`) || null;
+  const [hostKey] = useState(storedHostKey);
+
+  // Estado base
+  const [connected, setConnected] = useState(false);
+  const [players, setPlayers] = useState([]);
+  const [hostPlayerId, setHostPlayerId] = useState(null);
+  const [mySocketId, setMySocketId] = useState(null);
+  const [name, setName] = useState(state?.name || "");
+  const [log, setLog] = useState([]);
+
+  // Fases: lobby | active | vote | result | finished
+  const [phase, setPhase] = useState("lobby");
+  const [myRole, setMyRole] = useState(null);        // "player" | "impostor"
+  const [myCharacter, setMyCharacter] = useState(null);
+
+  // Votación
+  const [voteCandidates, setVoteCandidates] = useState([]);
+  const [selectedTarget, setSelectedTarget] = useState("");
+  const [myVoteLocked, setMyVoteLocked] = useState(false);
+  const [lastResult, setLastResult] = useState(null); // voteResult o gameOver
+
+  const joinedRef = useRef(false);
+
+  // Helpers
+  const isHost = Boolean(hostKey) && mySocketId && hostPlayerId === mySocketId;
+  const me = players.find(p => p.id === mySocketId);
+  const iAmAlive = me ? me.alive : true;
+
+  useEffect(() => {
+    // --- Socket listeners ---
+    const onConnect = () => {
+      setConnected(true);
+      setMySocketId(socket.id);
+    };
+    const onDisconnect = () => setConnected(false);
+
+    const onRoomUpdate = (payload) => {
+      if (Array.isArray(payload)) {
+        setPlayers(payload);
+        return;
+      }
+      if (payload && typeof payload === "object") {
+        setPlayers(payload.players || []);
+        setHostPlayerId(payload.hostPlayerId || null);
+      }
+    };
+
+    const onError = (msg) => setLog((p) => [...p, `❌ ${msg}`]);
+
+    const onGameStarted = () => {
+      setPhase("active");
+      setLastResult(null);
+      setVoteCandidates([]);
+      setSelectedTarget("");
+      setMyVoteLocked(false);
+    };
+
+    const onRoleAssigned = ({ role, character }) => {
+      setMyRole(role);
+      setMyCharacter(character || null);
+    };
+
+    const onVoteStarted = ({ players }) => {
+      setPhase("vote");
+      setVoteCandidates(players);
+      setSelectedTarget("");
+      setMyVoteLocked(false);
+    };
+
+    const onVoteResult = (payload) => {
+      // payload: { eliminated, wasImpostor, alivePlayers, tally }
+      setPhase("result");
+      setLastResult(payload);
+      setVoteCandidates([]);
+      setSelectedTarget("");
+      setMyVoteLocked(false);
+    };
+
+    const onGameOver = (payload) => {
+      // payload: { winner, impostor?, tally }
+      setPhase("finished");
+      setLastResult(payload);
+      setVoteCandidates([]);
+      setSelectedTarget("");
+      setMyVoteLocked(true);
+    };
+
+    const onRoundResumed = () => {
+      setPhase("active");
+      setSelectedTarget("");
+      setMyVoteLocked(false);
+      setLog(p => [...p, "▶️ Ronda reanudada por el host"]);
+    };
+
+    socket.off("connect", onConnect).on("connect", onConnect);
+    socket.off("disconnect", onDisconnect).on("disconnect", onDisconnect);
+    socket.off("roomUpdate", onRoomUpdate).on("roomUpdate", onRoomUpdate);
+    socket.off("errorMessage", onError).on("errorMessage", onError);
+    socket.off("gameStarted", onGameStarted).on("gameStarted", onGameStarted);
+    socket.off("roleAssigned", onRoleAssigned).on("roleAssigned", onRoleAssigned);
+    socket.off("voteStarted", onVoteStarted).on("voteStarted", onVoteStarted);
+    socket.off("voteResult", onVoteResult).on("voteResult", onVoteResult);
+    socket.off("gameOver", onGameOver).on("gameOver", onGameOver);
+    socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
+
+    if (!socket.connected) socket.connect();
+
+    // --- Auto-join (pregunta nombre si no viene desde el estado) ---
+    if (!joinedRef.current) {
+      const doJoin = (finalName) => {
+        if (!finalName) return;
+        socket.emit("joinRoom", {
+          roomId,
+          playerName: finalName,
+          hostKey: hostKey || undefined
+        });
+        joinedRef.current = true;
+      };
+
+      if (!name) {
+        const n = prompt("Ingresa tu nombre");
+        if (!n) { navigate("/join"); return; }
+        setName(n);
+        doJoin(n);
+      } else {
+        doJoin(name);
+      }
+    }
+  }, [roomId, name, navigate, hostKey]);
+
+  // --- Acciones host ---
+  const handleStartGame = () => {
+    if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
+    socket.emit("startGame", { roomId, hostKey });
+  };
+
+  const handleStartVote = () => {
+    if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
+    socket.emit("startVote", { roomId, hostKey });
+  };
+
+  const handleResumeAfterVote = () => {
+    if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
+    // ACK: el server confirma true/false para feedback inmediato
+    socket.emit("resumeAfterVote", { roomId, hostKey }, (ok) => {
+      if (ok) {
+        setLog(p => [...p, "✔️ Continuación enviada"]);
+        setPhase("active"); // El broadcast "roundResumed" igual llegará
+      } else {
+        setLog(p => [...p, "❌ No se pudo reanudar (verifica host/estado)"]);
+      }
+    });
+  };
+
+  // --- Voto ---
+  const handleCastVote = () => {
+    if (!selectedTarget) {
+      setLog(p=>[...p,"⚠️ Selecciona a alguien para votar"]);
+      return;
+    }
+    if (myVoteLocked) return;
+    setMyVoteLocked(true);
+    socket.emit("castVote", { roomId, targetId: selectedTarget });
+  };
+
+  // --- UI helpers ---
+  const alivePlayers = players.filter(p => p.alive);
+  const eliminatedPlayers = players.filter(p => !p.alive);
+
+  const TallyTable = ({ tally }) => {
+    if (!tally || !tally.length) return null;
+    return (
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Jugador</th>
+            <th style={{ textAlign: "right" }}>Votos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tally.map((row) => (
+            <tr key={row.id}>
+              <td>{row.name}</td>
+              <td style={{ textAlign: "right" }}>{row.count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  };
+
+  return (
+    <div className={`container ${phase === "lobby" || phase === "finished" ? "center-page" : ""}`}>
+      <h2 className="page-title">
+        Sala {roomId}
+        <span className="badge">{connected ? "🟢 Conectado" : "🔴 Desconectado"}</span>
+      </h2>
+
+      {/* Banner si estoy eliminado */}
+      {me && !iAmAlive && (
+        <div className="card" style={{ borderColor: "#7c3aed" }}>
+          Has sido eliminado. Puedes seguir mirando, pero no participas en votaciones.
+        </div>
+      )}
+
+      {/* Panel Host */}
+      {isHost ? (
+        <div className="card">
+          <h3 className="m0">Eres creador de la sala</h3>
+          <p className="muted mt2">Comparte este enlace con tu grupo:</p>
+          <div className="mt2" style={{ wordBreak: "break-all" }}>
+            <span className="pill">{`${window.location.origin}/room/${roomId}`}</span>
+          </div>
+          <div className="actions mt3">
+            <button className="btn" onClick={handleStartGame} disabled={phase !== "lobby"}>Iniciar partida</button>
+            <button className="btn secondary" onClick={handleStartVote} disabled={phase !== "active"}>Iniciar votación</button>
+            {phase === "result" && (
+              <button className="btn ghost" onClick={handleResumeAfterVote}>Continuar ahora</button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="muted">Jugador: <strong>{name}</strong></p>
+      )}
+
+      {/* Dos columnas (responsive) */}
+      <div className="grid-2 mt4">
+        {/* En juego */}
+        <div className="card">
+          <h4 className="m0 mb3">En juego</h4>
+          {alivePlayers.length === 0 ? (
+            <p className="muted">(vacío)</p>
+          ) : (
+            <ul className="list">
+              {alivePlayers.map(p => (
+                <li key={p.id}>
+                  <span>{p.name}</span>
+                  {p.id === mySocketId && <span className="pill">Tú</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Eliminados */}
+        <div className="card">
+          <h4 className="m0 mb3">Eliminados</h4>
+          {eliminatedPlayers.length === 0 ? (
+            <p className="muted">(ninguno)</p>
+          ) : (
+            <ul className="list">
+              {eliminatedPlayers.map(p => (
+                <li key={p.id} data-dead="true">
+                  <span>{p.name}</span>
+                  <span className="pill">Fuera</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Rol privado */}
+      {myRole && (
+        <div className="card mt4">
+          <h4 className="m0 mb3">Tu rol</h4>
+          {myRole === "impostor" ? (
+            <div>🤫 Eres el <b>IMPOSTOR</b></div>
+          ) : (
+            <div>🕵️ Eres <b>JUGADOR</b> — Personaje: <b>{myCharacter}</b></div>
+          )}
+        </div>
+      )}
+
+      {/* Votación */}
+      {phase === "vote" && (
+        <div className="card mt4">
+          <h4 className="m0">🗳️ Votación</h4>
+          {iAmAlive ? (
+            <>
+              <p className="muted mt2">Elige a quién eliminar (no puedes votarte a ti mismo).</p>
+              <div className="actions mt2">
+                <select
+                  className="select"
+                  value={selectedTarget}
+                  onChange={(e) => setSelectedTarget(e.target.value)}
+                  disabled={myVoteLocked}
+                >
+                  <option value="">-- Selecciona un jugador --</option>
+                  {alivePlayers.map(p => (
+                    <option key={p.id} value={p.id} disabled={p.id === mySocketId}>
+                      {p.name}{p.id === mySocketId ? " (tú)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className="btn"
+                  onClick={handleCastVote}
+                  disabled={myVoteLocked || !selectedTarget}
+                >
+                  Votar
+                </button>
+              </div>
+              <div className="mt2 muted">
+                {myVoteLocked ? <em>Voto registrado.</em> : <em>Aún no votas.</em>}
+              </div>
+            </>
+          ) : (
+            <p className="muted mt2">Estás eliminado; no puedes votar en esta ronda.</p>
+          )}
+        </div>
+      )}
+
+      {/* Resultado */}
+      {phase === "result" && lastResult && (
+        <div className="card mt4">
+          <h4 className="m0">📜 Resultado</h4>
+          <p className="mt2">
+            Más votado: <b>{lastResult.eliminated || "(desconocido)"}</b> —{" "}
+            {lastResult.wasImpostor
+              ? <span className="ok">✅ Era impostor.</span>
+              : <span className="danger">❌ NO era impostor.</span>}
+          </p>
+          <TallyTable tally={lastResult.tally} />
+          {!isHost && <p className="muted mt2">Esperando a que el host continúe la ronda…</p>}
+        </div>
+      )}
+
+      {/* Fin del juego */}
+      {phase === "finished" && lastResult && (
+        <div className="card mt4">
+          <h3 className="m0">🏁 Fin del juego</h3>
+          <p className="mt2">
+            {lastResult.winner === "players"
+              ? <>🎉 ¡Ganan los jugadores! {lastResult.impostor ? `(Impostor: ${lastResult.impostor})` : ""}</>
+              : <>😈 ¡Ganan los impostores!</>
+            }
+          </p>
+          <TallyTable tally={lastResult.tally} />
+          <div className="actions mt3">
+            <button className="btn ghost" onClick={() => navigate("/")}>Volver al inicio</button>
+          </div>
+        </div>
+      )}
+
+      {/* Logs (opcional para debug en dev) */}
+      {log.length > 0 && (
+        <div className="card mt4">
+          <h4 className="m0">Mensajes</h4>
+          <ul className="mt2">
+            {log.map((m, i) => <li key={i}>{m}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
