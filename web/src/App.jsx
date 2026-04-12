@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { socket } from "./socket";
 
 // Ajusta si tu backend REST usa otro host/puerto
-const API = "http://localhost:3000";
+const API = import.meta.env.VITE_BACKEND_URL;
 
 export default function App() {
   // ---- ESTADO ----

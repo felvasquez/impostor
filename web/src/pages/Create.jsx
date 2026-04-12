@@ -17,7 +17,7 @@ export default function Create() {
     try {
       setLoading(true);
       // 👇 Usa tu backend REST existente
-      const res = await fetch("http://localhost:3000/api/rooms", {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ maxPlayers, impostors })
