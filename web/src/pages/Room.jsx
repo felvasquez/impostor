@@ -52,6 +52,15 @@ export default function Room() {
     const onConnect = () => {
       setConnected(true);
       setMySocketId(socket.id);
+      // Re-emitir joinRoom en cada conexión/reconexión para recuperar el estado
+      const currentName = name || state?.name;
+      if (currentName) {
+        socket.emit("joinRoom", {
+          roomId,
+          playerName: currentName,
+          hostKey: hostKey || undefined,
+        });
+      }
     };
     const onDisconnect = () => setConnected(false);
 
@@ -124,29 +133,18 @@ export default function Room() {
     socket.off("gameOver", onGameOver).on("gameOver", onGameOver);
     socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
 
-    if (!socket.connected) socket.connect();
-
-    // --- Auto-join (pregunta nombre si no viene desde el estado) ---
+    // Si no hay nombre, pedirlo antes de conectar
     if (!joinedRef.current) {
-      const doJoin = (finalName) => {
-        if (!finalName) return;
-        socket.emit("joinRoom", {
-          roomId,
-          playerName: finalName,
-          hostKey: hostKey || undefined
-        });
-        joinedRef.current = true;
-      };
-
+      joinedRef.current = true;
       if (!name) {
         const n = prompt("Ingresa tu nombre");
         if (!n) { navigate("/join"); return; }
         setName(n);
-        doJoin(n);
-      } else {
-        doJoin(name);
       }
     }
+
+    if (!socket.connected) socket.connect();
+
   }, [roomId, name, navigate, hostKey]);
 
   // --- Acciones host ---
