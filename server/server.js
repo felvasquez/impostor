@@ -193,6 +193,16 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Verificar condición de victoria antes de iniciar la votación
+    const impostorsAlive = room.players.filter(p => p.alive && room.round?.impostorIds.includes(p.id)).length;
+    const playersAlive   = room.players.filter(p => p.alive && !room.round?.impostorIds.includes(p.id)).length;
+    if (room.round && impostorsAlive >= playersAlive) {
+      room.finished = true;
+      room.lastPhase = "finished";
+      io.to(roomId).emit("gameOver", { winner: "impostors", tally: [] });
+      return;
+    }
+
     room.votes = {};
     room.voters = new Set();
     room.lastPhase = "vote";

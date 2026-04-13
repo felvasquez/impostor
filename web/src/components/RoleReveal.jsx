@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const DURATION = 5; // segundos antes de auto-cerrar
+const DURATION = 7; // segundos antes de auto-cerrar
 
 export default function RoleReveal({ role, character, onDone }) {
   const [seconds, setSeconds] = useState(DURATION);

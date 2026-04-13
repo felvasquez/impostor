@@ -4,8 +4,8 @@ import { useState } from "react";
 export default function Create() {
   const navigate = useNavigate();
   const [hostName, setHostName] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState(8);
-  const [impostors, setImpostors] = useState(1);
+  const [maxPlayers, setMaxPlayers] = useState("8");
+  const [impostors, setImpostors] = useState("1");
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -20,7 +20,7 @@ export default function Create() {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ maxPlayers, impostors })
+        body: JSON.stringify({ maxPlayers: Number(maxPlayers) || 8, impostors: Number(impostors) || 1 })
       });
 
       if (!res.ok) {
@@ -44,7 +44,7 @@ export default function Create() {
   };
 
   return (
-    <div className="container center-page">
+    <div className="container center-page" style={{ alignItems: "center", textAlign: "center" }}>
       <h2 className="page-title">Crear sala</h2>
 
       <div className="card" style={{ width: "100%", maxWidth: "400px" }}>
@@ -64,7 +64,7 @@ export default function Create() {
             min={3}
             max={12}
             value={maxPlayers}
-            onChange={(e) => setMaxPlayers(Number(e.target.value))}
+            onChange={(e) => setMaxPlayers(e.target.value)}
           />
         </div>
 
@@ -76,7 +76,7 @@ export default function Create() {
             min={1}
             max={3}
             value={impostors}
-            onChange={(e) => setImpostors(Number(e.target.value))}
+            onChange={(e) => setImpostors(e.target.value)}
           />
         </div>
 

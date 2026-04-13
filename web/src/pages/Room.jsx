@@ -250,15 +250,34 @@ export default function Room() {
       {isHost ? (
         <div className="card">
           <h3 className="m0">Eres creador de la sala</h3>
-          <p className="muted mt2">Comparte este enlace con tu grupo:</p>
-          <div className="mt2" style={{ wordBreak: "break-all" }}>
-            <span className="pill">{`${window.location.origin}/room/${roomId}`}</span>
-          </div>
+
+          {/* Link solo visible en lobby */}
+          {phase === "lobby" && (
+            <>
+              <p className="muted mt2">Comparte este enlace con tu grupo:</p>
+              <div className="mt2" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span className="pill" style={{ wordBreak: "break-all", flex: 1 }}>
+                  {`${window.location.origin}/room/${roomId}`}
+                </span>
+                <button
+                  className="btn secondary"
+                  style={{ whiteSpace: "nowrap", padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/room/${roomId}`);
+                  }}
+                >
+                  Copiar
+                </button>
+              </div>
+            </>
+          )}
+
           <div className="actions mt3">
-            <button className="btn" onClick={handleStartGame} disabled={phase !== "lobby"}>Iniciar partida</button>
-            <button className="btn secondary" onClick={handleStartVote} disabled={phase !== "active"}>Iniciar votación</button>
-            {phase === "result" && (
-              <button className="btn ghost" onClick={handleResumeAfterVote}>Continuar ahora</button>
+            {phase === "lobby" && (
+              <button className="btn" onClick={handleStartGame}>Iniciar partida</button>
+            )}
+            {phase === "active" && (
+              <button className="btn secondary" onClick={handleStartVote}>Iniciar votación</button>
             )}
           </div>
         </div>

@@ -5,7 +5,7 @@ export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <div className="container center-page">
+    <div className="container center-page" style={{ alignItems: "center", textAlign: "center" }}>
       <h1 className="page-title">🎭 El Impostor</h1>
       <p className="muted">Juego rápido de adivinanza y engaño 😈</p>
 
