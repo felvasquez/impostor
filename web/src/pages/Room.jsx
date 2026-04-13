@@ -13,6 +13,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
 import VoteScreen from "../components/VoteScreen";
+import ResultScreen from "../components/ResultScreen";
+import GameOverScreen from "../components/GameOverScreen";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -189,28 +191,6 @@ export default function Room() {
   const alivePlayers = players.filter(p => p.alive);
   const eliminatedPlayers = players.filter(p => !p.alive);
 
-  const TallyTable = ({ tally }) => {
-    if (!tally || !tally.length) return null;
-    return (
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Jugador</th>
-            <th style={{ textAlign: "right" }}>Votos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tally.map((row) => (
-            <tr key={row.id}>
-              <td>{row.name}</td>
-              <td style={{ textAlign: "right" }}>{row.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
   if (showReveal && myRole) {
     return (
       <RoleReveal
@@ -229,6 +209,25 @@ export default function Room() {
         iAmAlive={iAmAlive}
         voteLocked={myVoteLocked}
         onVote={handleCastVote}
+      />
+    );
+  }
+
+  if (phase === "result" && lastResult) {
+    return (
+      <ResultScreen
+        result={lastResult}
+        isHost={isHost}
+        onContinue={handleResumeAfterVote}
+      />
+    );
+  }
+
+  if (phase === "finished" && lastResult) {
+    return (
+      <GameOverScreen
+        result={lastResult}
+        onRestart={() => navigate("/")}
       />
     );
   }
@@ -313,38 +312,6 @@ export default function Room() {
           ) : (
             <div>🕵️ Eres <b>JUGADOR</b> — Personaje: <b>{myCharacter}</b></div>
           )}
-        </div>
-      )}
-
-      {/* Resultado */}
-      {phase === "result" && lastResult && (
-        <div className="card mt4">
-          <h4 className="m0">📜 Resultado</h4>
-          <p className="mt2">
-            Más votado: <b>{lastResult.eliminated || "(desconocido)"}</b> —{" "}
-            {lastResult.wasImpostor
-              ? <span className="ok">✅ Era impostor.</span>
-              : <span className="danger">❌ NO era impostor.</span>}
-          </p>
-          <TallyTable tally={lastResult.tally} />
-          {!isHost && <p className="muted mt2">Esperando a que el host continúe la ronda…</p>}
-        </div>
-      )}
-
-      {/* Fin del juego */}
-      {phase === "finished" && lastResult && (
-        <div className="card mt4">
-          <h3 className="m0">🏁 Fin del juego</h3>
-          <p className="mt2">
-            {lastResult.winner === "players"
-              ? <>🎉 ¡Ganan los jugadores! {lastResult.impostor ? `(Impostor: ${lastResult.impostor})` : ""}</>
-              : <>😈 ¡Ganan los impostores!</>
-            }
-          </p>
-          <TallyTable tally={lastResult.tally} />
-          <div className="actions mt3">
-            <button className="btn ghost" onClick={() => navigate("/")}>Volver al inicio</button>
-          </div>
         </div>
       )}
 
