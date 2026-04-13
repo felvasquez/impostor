@@ -11,6 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
+import RoleReveal from "../components/RoleReveal";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -39,6 +40,7 @@ export default function Room() {
   const [selectedTarget, setSelectedTarget] = useState("");
   const [myVoteLocked, setMyVoteLocked] = useState(false);
   const [lastResult, setLastResult] = useState(null); // voteResult o gameOver
+  const [showReveal, setShowReveal] = useState(false);
 
   const joinedRef = useRef(false);
 
@@ -88,6 +90,7 @@ export default function Room() {
     const onRoleAssigned = ({ role, character }) => {
       setMyRole(role);
       setMyCharacter(character || null);
+      setShowReveal(true);
     };
 
     const onVoteStarted = ({ players }) => {
@@ -216,6 +219,16 @@ export default function Room() {
       </table>
     );
   };
+
+  if (showReveal && myRole) {
+    return (
+      <RoleReveal
+        role={myRole}
+        character={myCharacter}
+        onDone={() => setShowReveal(false)}
+      />
+    );
+  }
 
   return (
     <div className={`container ${phase === "lobby" || phase === "finished" ? "center-page" : ""}`}>
