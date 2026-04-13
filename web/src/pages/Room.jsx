@@ -25,8 +25,8 @@ export default function Room() {
   const storedHostKey = localStorage.getItem(`hostKey:${roomId}`) || null;
   const [hostKey] = useState(storedHostKey);
 
-  // Estado base
-  const [connected, setConnected] = useState(false);
+  // Estado base — inicializar desde el estado real del socket (puede ya estar conectado)
+  const [connected, setConnected] = useState(socket.connected);
   const [players, setPlayers] = useState([]);
   const [hostPlayerId, setHostPlayerId] = useState(null);
   const [mySocketId, setMySocketId] = useState(null);
@@ -152,7 +152,21 @@ export default function Room() {
       }
     }
 
-    if (!socket.connected) socket.connect();
+    if (socket.connected) {
+      // Ya conectado: sincronizar estado local y emitir joinRoom directamente
+      setConnected(true);
+      setMySocketId(socket.id);
+      const currentName = name || state?.name;
+      if (currentName) {
+        socket.emit("joinRoom", {
+          roomId,
+          playerName: currentName,
+          hostKey: hostKey || undefined,
+        });
+      }
+    } else {
+      socket.connect();
+    }
 
   }, [roomId, name, navigate, hostKey]);
 
