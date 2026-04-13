@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
+import VoteScreen from "../components/VoteScreen";
 
 export default function Room() {
   const { roomId } = useParams();
@@ -37,7 +38,6 @@ export default function Room() {
 
   // Votación
   const [voteCandidates, setVoteCandidates] = useState([]);
-  const [selectedTarget, setSelectedTarget] = useState("");
   const [myVoteLocked, setMyVoteLocked] = useState(false);
   const [lastResult, setLastResult] = useState(null); // voteResult o gameOver
   const [showReveal, setShowReveal] = useState(false);
@@ -83,7 +83,6 @@ export default function Room() {
       setPhase("active");
       setLastResult(null);
       setVoteCandidates([]);
-      setSelectedTarget("");
       setMyVoteLocked(false);
     };
 
@@ -96,7 +95,6 @@ export default function Room() {
     const onVoteStarted = ({ players }) => {
       setPhase("vote");
       setVoteCandidates(players);
-      setSelectedTarget("");
       setMyVoteLocked(false);
     };
 
@@ -105,7 +103,6 @@ export default function Room() {
       setPhase("result");
       setLastResult(payload);
       setVoteCandidates([]);
-      setSelectedTarget("");
       setMyVoteLocked(false);
     };
 
@@ -114,13 +111,11 @@ export default function Room() {
       setPhase("finished");
       setLastResult(payload);
       setVoteCandidates([]);
-      setSelectedTarget("");
       setMyVoteLocked(true);
     };
 
     const onRoundResumed = () => {
       setPhase("active");
-      setSelectedTarget("");
       setMyVoteLocked(false);
       setLog(p => [...p, "▶️ Ronda reanudada por el host"]);
     };
@@ -184,14 +179,10 @@ export default function Room() {
   };
 
   // --- Voto ---
-  const handleCastVote = () => {
-    if (!selectedTarget) {
-      setLog(p=>[...p,"⚠️ Selecciona a alguien para votar"]);
-      return;
-    }
-    if (myVoteLocked) return;
+  const handleCastVote = (targetId) => {
+    if (!targetId || myVoteLocked) return;
     setMyVoteLocked(true);
-    socket.emit("castVote", { roomId, targetId: selectedTarget });
+    socket.emit("castVote", { roomId, targetId });
   };
 
   // --- UI helpers ---
@@ -226,6 +217,18 @@ export default function Room() {
         role={myRole}
         character={myCharacter}
         onDone={() => setShowReveal(false)}
+      />
+    );
+  }
+
+  if (phase === "vote") {
+    return (
+      <VoteScreen
+        candidates={voteCandidates}
+        mySocketId={mySocketId}
+        iAmAlive={iAmAlive}
+        voteLocked={myVoteLocked}
+        onVote={handleCastVote}
       />
     );
   }
@@ -309,45 +312,6 @@ export default function Room() {
             <div>🤫 Eres el <b>IMPOSTOR</b></div>
           ) : (
             <div>🕵️ Eres <b>JUGADOR</b> — Personaje: <b>{myCharacter}</b></div>
-          )}
-        </div>
-      )}
-
-      {/* Votación */}
-      {phase === "vote" && (
-        <div className="card mt4">
-          <h4 className="m0">🗳️ Votación</h4>
-          {iAmAlive ? (
-            <>
-              <p className="muted mt2">Elige a quién eliminar (no puedes votarte a ti mismo).</p>
-              <div className="actions mt2">
-                <select
-                  className="select"
-                  value={selectedTarget}
-                  onChange={(e) => setSelectedTarget(e.target.value)}
-                  disabled={myVoteLocked}
-                >
-                  <option value="">-- Selecciona un jugador --</option>
-                  {alivePlayers.map(p => (
-                    <option key={p.id} value={p.id} disabled={p.id === mySocketId}>
-                      {p.name}{p.id === mySocketId ? " (tú)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="btn"
-                  onClick={handleCastVote}
-                  disabled={myVoteLocked || !selectedTarget}
-                >
-                  Votar
-                </button>
-              </div>
-              <div className="mt2 muted">
-                {myVoteLocked ? <em>Voto registrado.</em> : <em>Aún no votas.</em>}
-              </div>
-            </>
-          ) : (
-            <p className="muted mt2">Estás eliminado; no puedes votar en esta ronda.</p>
           )}
         </div>
       )}
