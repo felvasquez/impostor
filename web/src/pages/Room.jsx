@@ -49,6 +49,15 @@ export default function Room() {
   const [showStarter, setShowStarter] = useState(false);
 
 
+  // Mostrar StarterReveal cuando phase pasa a "active" y hay un starter asignado
+  // Este useEffect actúa como respaldo en caso de que el orden de eventos varíe
+  useEffect(() => {
+    if (phase === "active" && starterName && !showReveal) {
+      console.log("[useEffect] activando StarterReveal para:", starterName);
+      setShowStarter(true);
+    }
+  }, [phase, starterName, showReveal]);
+
   // Helpers
   const isHost = Boolean(hostKey) && mySocketId && hostPlayerId === mySocketId;
   const me = players.find(p => p.id === mySocketId);
@@ -85,6 +94,7 @@ export default function Room() {
     const onError = (msg) => setLog((p) => [...p, `❌ ${msg}`]);
 
     const onGameStarted = ({ starterName: starter } = {}) => {
+      console.log("[gameStarted] starter recibido:", starter);
       setPhase("active");
       setLastResult(null);
       setVoteCandidates([]);
@@ -92,6 +102,8 @@ export default function Room() {
       if (starter) {
         setStarterName(starter);
         setShowStarter(true);
+      } else {
+        console.warn("[gameStarted] starterName no vino del servidor");
       }
     };
 
@@ -125,6 +137,7 @@ export default function Room() {
     };
 
     const onRoundResumed = ({ starterName: starter } = {}) => {
+      console.log("[roundResumed] starter recibido:", starter);
       setPhase("active");
       setMyVoteLocked(false);
       if (starter) {
