@@ -131,6 +131,7 @@ io.on("connection", (socket) => {
         phase: room.lastPhase,
         role: isImpostor ? "impostor" : "player",
         character: isImpostor ? null : room.round.character,
+        starterName: room.round.starterName || null,
       });
 
       // Si estaba en votación, reenviar candidatos
@@ -165,7 +166,9 @@ io.on("connection", (socket) => {
     const impostorIds = impostors.map(p => p.id);
     const impostorNames = impostors.map(p => p.name);
 
-    room.round = { character, impostorIds, impostorNames };
+    const starter = room.players[Math.floor(Math.random() * room.players.length)];
+
+    room.round = { character, impostorIds, impostorNames, starterName: starter.name };
     room.finished = false;
     room.votes = {};
     room.voters = new Set();
@@ -179,8 +182,8 @@ io.on("connection", (socket) => {
       });
     });
 
-    console.log(`🎭 Partida iniciada (${roomId}) con "${character}"`);
-    io.to(roomId).emit("gameStarted");
+    console.log(`🎭 Partida iniciada (${roomId}) con "${character}" — empieza: ${starter.name}`);
+    io.to(roomId).emit("gameStarted", { starterName: starter.name });
   });
 
   socket.on("startVote", ({ roomId, hostKey }) => {

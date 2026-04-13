@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
+import StarterReveal from "../components/StarterReveal";
 import VoteScreen from "../components/VoteScreen";
 import ResultScreen from "../components/ResultScreen";
 import GameOverScreen from "../components/GameOverScreen";
@@ -43,6 +44,8 @@ export default function Room() {
   const [myVoteLocked, setMyVoteLocked] = useState(false);
   const [lastResult, setLastResult] = useState(null); // voteResult o gameOver
   const [showReveal, setShowReveal] = useState(false);
+  const [starterName, setStarterName] = useState(null);
+  const [showStarter, setShowStarter] = useState(false);
 
   const joinedRef = useRef(false);
 
@@ -81,11 +84,15 @@ export default function Room() {
 
     const onError = (msg) => setLog((p) => [...p, `❌ ${msg}`]);
 
-    const onGameStarted = () => {
+    const onGameStarted = ({ starterName: starter } = {}) => {
       setPhase("active");
       setLastResult(null);
       setVoteCandidates([]);
       setMyVoteLocked(false);
+      if (starter) {
+        setStarterName(starter);
+        setShowStarter(true);
+      }
     };
 
     const onRoleAssigned = ({ role, character }) => {
@@ -122,12 +129,13 @@ export default function Room() {
       setLog(p => [...p, "▶️ Ronda reanudada por el host"]);
     };
 
-    const onRejoinSync = ({ phase, role, character }) => {
+    const onRejoinSync = ({ phase, role, character, starterName: starter }) => {
       setPhase(phase);
       if (role) {
         setMyRole(role);
         setMyCharacter(character || null);
       }
+      if (starter) setStarterName(starter);
     };
 
     socket.off("connect", onConnect).on("connect", onConnect);
@@ -210,7 +218,20 @@ export default function Room() {
       <RoleReveal
         role={myRole}
         character={myCharacter}
-        onDone={() => setShowReveal(false)}
+        onDone={() => {
+          setShowReveal(false);
+          if (starterName) setShowStarter(true);
+        }}
+      />
+    );
+  }
+
+  if (showStarter && starterName) {
+    return (
+      <StarterReveal
+        starterName={starterName}
+        isMe={starterName === name}
+        onDone={() => setShowStarter(false)}
       />
     );
   }
