@@ -13,7 +13,7 @@ export default function Join() {
   };
 
   return (
-    <div className="container center-page">
+    <div className="container center-page" style={{ alignItems: "center", textAlign: "center" }}>
       <h2 className="page-title">Unirse a sala</h2>
 
       <div className="card" style={{ width: "100%", maxWidth: "400px" }}>

@@ -8,11 +8,12 @@
 // - Si estás eliminado: banner y no puedes votar.
 // -----------------------------------------------------------------------------
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
 import StarterReveal from "../components/StarterReveal";
+import RoomWelcome from "../components/RoomWelcome";
 import VoteScreen from "../components/VoteScreen";
 import ResultScreen from "../components/ResultScreen";
 import GameOverScreen from "../components/GameOverScreen";
@@ -47,7 +48,6 @@ export default function Room() {
   const [starterName, setStarterName] = useState(null);
   const [showStarter, setShowStarter] = useState(false);
 
-  const joinedRef = useRef(false);
 
   // Helpers
   const isHost = Boolean(hostKey) && mySocketId && hostPlayerId === mySocketId;
@@ -150,15 +150,8 @@ export default function Room() {
     socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
     socket.off("rejoinSync", onRejoinSync).on("rejoinSync", onRejoinSync);
 
-    // Si no hay nombre, pedirlo antes de conectar
-    if (!joinedRef.current) {
-      joinedRef.current = true;
-      if (!name) {
-        const n = prompt("Ingresa tu nombre");
-        if (!n) { navigate("/join"); return; }
-        setName(n);
-      }
-    }
+    // Sin nombre aún: esperar a que RoomWelcome lo provea
+    if (!name) return;
 
     if (socket.connected) {
       // Ya conectado: sincronizar estado local y emitir joinRoom directamente
@@ -212,6 +205,16 @@ export default function Room() {
   // --- UI helpers ---
   const alivePlayers = players.filter(p => p.alive);
   const eliminatedPlayers = players.filter(p => !p.alive);
+
+  // Sin nombre: mostrar pantalla de bienvenida en lugar del prompt nativo
+  if (!name) {
+    return (
+      <RoomWelcome
+        roomId={roomId}
+        onJoin={(playerName) => setName(playerName)}
+      />
+    );
+  }
 
   if (showReveal && myRole) {
     return (
