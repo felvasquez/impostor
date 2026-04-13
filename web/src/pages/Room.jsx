@@ -8,7 +8,7 @@
 // - Si estás eliminado: banner y no puedes votar.
 // -----------------------------------------------------------------------------
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
@@ -47,7 +47,6 @@ export default function Room() {
   const [showReveal, setShowReveal] = useState(false);
   const [starterName, setStarterName] = useState(null);
   const [showStarter, setShowStarter] = useState(false);
-  const starterNameRef = useRef(null); // ref para leer starterName sin depender del closure
 
 
   // Helpers
@@ -91,9 +90,8 @@ export default function Room() {
       setVoteCandidates([]);
       setMyVoteLocked(false);
       if (starter) {
-        starterNameRef.current = starter;
         setStarterName(starter);
-        // showStarter lo activa onDone de RoleReveal, así siempre aparece después del reveal de rol
+        setShowStarter(true);
       }
     };
 
@@ -130,7 +128,6 @@ export default function Room() {
       setPhase("active");
       setMyVoteLocked(false);
       if (starter) {
-        starterNameRef.current = starter;
         setStarterName(starter);
         setShowStarter(true);
       }
@@ -142,7 +139,7 @@ export default function Room() {
         setMyRole(role);
         setMyCharacter(character || null);
       }
-      if (starter) { starterNameRef.current = starter; setStarterName(starter); }
+      if (starter) setStarterName(starter);
     };
 
     socket.off("connect", onConnect).on("connect", onConnect);
@@ -223,10 +220,7 @@ export default function Room() {
       <RoleReveal
         role={myRole}
         character={myCharacter}
-        onDone={() => {
-          setShowReveal(false);
-          if (starterNameRef.current) setShowStarter(true);
-        }}
+        onDone={() => setShowReveal(false)}
       />
     );
   }
