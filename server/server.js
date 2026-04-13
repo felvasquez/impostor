@@ -22,7 +22,9 @@ app.use(express.json());
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] }
+  cors: { origin: "*", methods: ["GET", "POST"] },
+  pingInterval: 10000,
+  pingTimeout: 25000,
 });
 
 // rooms: Map<roomId, { id, hostKey, hostPlayerId, players[], impostors, maxPlayers, round, finished, votes, voters, lastPhase }>
@@ -86,8 +88,12 @@ io.on("connection", (socket) => {
       console.log(`🆕 Sala creada automáticamente: ${roomId}`);
     }
 
-    // Anti-duplicados por socket
-    room.players = room.players.filter(p => p.id !== socket.id);
+    // Preservar estado alive si el jugador existía antes (reconexión)
+    const previousPlayer = room.players.find(p => p.name === playerName);
+    const wasAlive = previousPlayer ? previousPlayer.alive : true;
+
+    // Anti-duplicados por socket y por nombre
+    room.players = room.players.filter(p => p.id !== socket.id && p.name !== playerName);
 
     // Si trae hostKey válido, este socket será el host activo
     if (hostKey && assertHost(room, hostKey)) {
@@ -100,7 +106,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const player = { id: socket.id, name: playerName, alive: true };
+    const player = { id: socket.id, name: playerName, alive: wasAlive };
     room.players.push(player);
     socket.join(roomId);
 
@@ -108,6 +114,34 @@ io.on("connection", (socket) => {
       players: room.players,
       hostPlayerId: room.hostPlayerId
     });
+
+    // Sincronizar estado de la partida si ya empezó
+    if (room.round && room.lastPhase !== "lobby") {
+      const isImpostor = room.round.impostorNames?.includes(playerName);
+
+      // Actualizar impostorIds con el nuevo socket.id
+      if (isImpostor && !room.round.impostorIds.includes(socket.id)) {
+        room.round.impostorIds = room.round.impostorIds.filter(id =>
+          room.players.some(p => p.id === id)
+        );
+        room.round.impostorIds.push(socket.id);
+      }
+
+      socket.emit("rejoinSync", {
+        phase: room.lastPhase,
+        role: isImpostor ? "impostor" : "player",
+        character: isImpostor ? null : room.round.character,
+      });
+
+      // Si estaba en votación, reenviar candidatos
+      if (room.lastPhase === "vote") {
+        socket.emit("voteStarted", {
+          players: room.players.filter(p => p.alive)
+        });
+      }
+
+      console.log(`🔄 Rejoin sync (${roomId}): ${playerName} → fase "${room.lastPhase}"`);
+    }
   });
 
   socket.on("startGame", ({ roomId, hostKey }) => {
@@ -127,9 +161,11 @@ io.on("connection", (socket) => {
 
     const character = characters[Math.floor(Math.random() * characters.length)];
     const shuffled = [...room.players].sort(() => Math.random() - 0.5);
-    const impostorIds = shuffled.slice(0, room.impostors).map(p => p.id);
+    const impostors = shuffled.slice(0, room.impostors);
+    const impostorIds = impostors.map(p => p.id);
+    const impostorNames = impostors.map(p => p.name);
 
-    room.round = { character, impostorIds };
+    room.round = { character, impostorIds, impostorNames };
     room.finished = false;
     room.votes = {};
     room.voters = new Set();

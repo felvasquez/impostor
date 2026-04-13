@@ -122,6 +122,14 @@ export default function Room() {
       setLog(p => [...p, "▶️ Ronda reanudada por el host"]);
     };
 
+    const onRejoinSync = ({ phase, role, character }) => {
+      setPhase(phase);
+      if (role) {
+        setMyRole(role);
+        setMyCharacter(character || null);
+      }
+    };
+
     socket.off("connect", onConnect).on("connect", onConnect);
     socket.off("disconnect", onDisconnect).on("disconnect", onDisconnect);
     socket.off("roomUpdate", onRoomUpdate).on("roomUpdate", onRoomUpdate);
@@ -132,6 +140,7 @@ export default function Room() {
     socket.off("voteResult", onVoteResult).on("voteResult", onVoteResult);
     socket.off("gameOver", onGameOver).on("gameOver", onGameOver);
     socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
+    socket.off("rejoinSync", onRejoinSync).on("rejoinSync", onRejoinSync);
 
     // Si no hay nombre, pedirlo antes de conectar
     if (!joinedRef.current) {
