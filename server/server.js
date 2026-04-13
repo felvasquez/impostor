@@ -182,8 +182,9 @@ io.on("connection", (socket) => {
       });
     });
 
-    console.log(`🎭 Partida iniciada (${roomId}) con "${character}" — empieza: ${starter.name}`);
-    io.to(roomId).emit("gameStarted", { starterName: starter.name });
+    const starterName = starter.name;
+    console.log(`🎭 Partida iniciada (${roomId}) con "${character}" — empieza: ${starterName}`);
+    io.to(roomId).emit("gameStarted", { starterName });
   });
 
   socket.on("startVote", ({ roomId, hostKey }) => {
