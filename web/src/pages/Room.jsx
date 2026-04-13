@@ -107,6 +107,7 @@ export default function Room() {
       setPhase("vote");
       setVoteCandidates(players);
       setMyVoteLocked(false);
+      setShowStarter(false);
     };
 
     const onVoteResult = (payload) => {
@@ -125,10 +126,14 @@ export default function Room() {
       setMyVoteLocked(true);
     };
 
-    const onRoundResumed = () => {
+    const onRoundResumed = ({ starterName: starter } = {}) => {
       setPhase("active");
       setMyVoteLocked(false);
-      setLog(p => [...p, "▶️ Ronda reanudada por el host"]);
+      if (starter) {
+        starterNameRef.current = starter;
+        setStarterName(starter);
+        setShowStarter(true);
+      }
     };
 
     const onRejoinSync = ({ phase, role, character, starterName: starter }) => {
@@ -188,12 +193,7 @@ export default function Room() {
     if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
     // ACK: el server confirma true/false para feedback inmediato
     socket.emit("resumeAfterVote", { roomId, hostKey }, (ok) => {
-      if (ok) {
-        setLog(p => [...p, "✔️ Continuación enviada"]);
-        setPhase("active"); // El broadcast "roundResumed" igual llegará
-      } else {
-        setLog(p => [...p, "❌ No se pudo reanudar (verifica host/estado)"]);
-      }
+      if (!ok) setLog(p => [...p, "❌ No se pudo reanudar (verifica host/estado)"]);
     });
   };
 

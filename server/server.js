@@ -335,9 +335,13 @@ io.on("connection", (socket) => {
         return cb && cb(false);
       }
 
+      const alivePlayers = room.players.filter(p => p.alive);
+      const starter = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+      if (room.round) room.round.starterName = starter?.name || null;
+
       room.lastPhase = "active";
-      io.to(roomId).emit("roundResumed");
-      console.log(`▶️ Ronda reanudada por el host en ${roomId}`);
+      io.to(roomId).emit("roundResumed", { starterName: starter?.name || null });
+      console.log(`▶️ Ronda reanudada por el host en ${roomId} — empieza: ${starter?.name}`);
       return cb && cb(true);
     } catch {
       return cb && cb(false);
