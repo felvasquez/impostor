@@ -156,8 +156,14 @@ io.on("connection", (socket) => {
     }
 
     const characters = [
-      "Spider-Man","Mario Bros","Elsa","Shrek","Batman",
-      "Darth Vader","Indiana Jones","Gandalf","Hércules"
+      "Spider-Man", "Mario Bros", "Elsa", "Shrek", "Batman",
+      "Darth Vader", "Indiana Jones", "Gandalf", "Hércules",
+      "Chuck Norris", "Marilyn Monroe", "Marilyn Manson",
+      "Mario Kreutzberger", "Chuky", "Napoleón", "E.T",
+      "Frodo", "Alexis Sánchez", "El grinch", "Maradona",
+      "Pelé", "Xuxa", "Messi", "Shakira", "La Rosario",
+      "Julio Iglesias", "Marcelo Ríos", "Gloria Estefan",
+      "Iván Zamorano", "Peter la Anguila", "Condorito"
     ];
 
     const character = characters[Math.floor(Math.random() * characters.length)];

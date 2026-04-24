@@ -280,38 +280,65 @@ export default function Room() {
   }
 
   return (
-    <div className={`container ${phase === "lobby" || phase === "finished" ? "center-page" : ""}`}>
-      <h2 className="page-title">
-        Sala {roomId}
-        <span className="badge">{connected ? "🟢 Conectado" : "🔴 Desconectado"}</span>
-      </h2>
+    <div className={`container ${phase === "lobby" || phase === "finished" ? "center-page" : ""}`}
+      style={phase === "lobby" ? { alignItems: "center" } : {}}
+    >
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
+        <div>
+          <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#4b5563" }}>
+            Sala
+          </p>
+          <h2 style={{ margin: 0, fontSize: "clamp(1.3rem, 4vw, 1.8rem)", fontWeight: 900, letterSpacing: "-0.5px", color: "#e5e7eb" }}>
+            {roomId}
+          </h2>
+        </div>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: "0.35rem",
+          padding: "0.3rem 0.7rem", borderRadius: "999px",
+          fontSize: "0.75rem", fontWeight: 600,
+          background: connected ? "rgba(16,185,129,0.12)" : "rgba(239,68,68,0.12)",
+          color: connected ? "#10b981" : "#ef4444",
+          border: `1px solid ${connected ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.25)"}`,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "currentColor", display: "inline-block" }} />
+          {connected ? "Conectado" : "Desconectado"}
+        </span>
+      </div>
 
       {/* Banner si estoy eliminado */}
       {me && !iAmAlive && (
-        <div className="card" style={{ borderColor: "#7c3aed" }}>
+        <div className="card" style={{ borderColor: "#7c3aed", background: "rgba(124,58,237,0.08)", color: "#c4b5fd", width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
           Has sido eliminado. Puedes seguir mirando, pero no participas en votaciones.
         </div>
       )}
 
       {/* Panel Host */}
       {isHost ? (
-        <div className="card">
-          <h3 className="m0">Eres creador de la sala</h3>
+        <div className="card" style={{ width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+            <span style={{ fontSize: "1.1rem" }}>👑</span>
+            <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#e5e7eb" }}>Eres el creador de la sala</h3>
+          </div>
 
           {/* Link solo visible en lobby */}
           {phase === "lobby" && (
             <>
-              <p className="muted mt2">Comparte este enlace con tu grupo:</p>
-              <div className="mt2" style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                <span className="pill" style={{ wordBreak: "break-all", flex: 1 }}>
+              <p style={{ margin: "0 0 0.5rem", fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280" }}>
+                Enlace para compartir
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span style={{
+                  flex: 1, padding: "0.45rem 0.75rem", borderRadius: 10,
+                  border: "1px solid #1f2937", background: "#060b14",
+                  fontSize: "0.8rem", color: "#9ca3af", wordBreak: "break-all",
+                }}>
                   {`${window.location.origin}/room/${roomId}`}
                 </span>
                 <button
                   className="btn secondary"
-                  style={{ whiteSpace: "nowrap", padding: "0.4rem 0.8rem", fontSize: "0.85rem" }}
-                  onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/room/${roomId}`);
-                  }}
+                  style={{ whiteSpace: "nowrap", padding: "0.45rem 0.9rem", fontSize: "0.8rem" }}
+                  onClick={() => navigator.clipboard.writeText(`${window.location.origin}/room/${roomId}`)}
                 >
                   Copiar
                 </button>
@@ -321,30 +348,44 @@ export default function Room() {
 
           <div className="actions mt3">
             {phase === "lobby" && (
-              <button className="btn" onClick={handleStartGame}>Iniciar partida</button>
+              <button className="btn" style={{ padding: "0.75rem 1.25rem" }} onClick={handleStartGame}>
+                Iniciar partida
+              </button>
             )}
             {phase === "active" && (
-              <button className="btn secondary" onClick={handleStartVote}>Iniciar votación</button>
+              <button className="btn secondary" style={{ padding: "0.75rem 1.25rem" }} onClick={handleStartVote}>
+                Iniciar votación
+              </button>
             )}
           </div>
         </div>
       ) : (
-        <p className="muted">Jugador: <strong>{name}</strong></p>
+        <div style={{ marginBottom: "0.5rem", width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
+          <span style={{ fontSize: "0.85rem", color: "#6b7280" }}>Jugando como </span>
+          <strong style={{ color: "#e5e7eb", fontSize: "0.95rem" }}>{name}</strong>
+        </div>
       )}
 
       {/* Dos columnas (responsive) */}
-      <div className="grid-2 mt4">
+      <div className="grid-2 mt4" style={{ width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
         {/* En juego */}
         <div className="card">
-          <h4 className="m0 mb3">En juego</h4>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+            <h4 style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280" }}>En juego</h4>
+            <span style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>{alivePlayers.length}</span>
+          </div>
           {alivePlayers.length === 0 ? (
-            <p className="muted">(vacío)</p>
+            <p className="muted" style={{ fontSize: "0.85rem" }}>(vacío)</p>
           ) : (
             <ul className="list">
               {alivePlayers.map(p => (
-                <li key={p.id}>
-                  <span>{p.name}</span>
-                  {p.id === mySocketId && <span className="pill">Tú</span>}
+                <li key={p.id} style={{ background: p.id === mySocketId ? "rgba(99,102,241,0.08)" : undefined, borderColor: p.id === mySocketId ? "rgba(99,102,241,0.2)" : "transparent" }}>
+                  <span style={{ fontWeight: p.id === mySocketId ? 700 : 400 }}>{p.name}</span>
+                  {p.id === mySocketId && (
+                    <span style={{ padding: "0.15rem 0.5rem", borderRadius: 999, fontSize: "0.7rem", fontWeight: 700, background: "rgba(99,102,241,0.2)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}>
+                      Tú
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -353,15 +394,20 @@ export default function Room() {
 
         {/* Eliminados */}
         <div className="card">
-          <h4 className="m0 mb3">Eliminados</h4>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+            <h4 style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280" }}>Eliminados</h4>
+            <span style={{ fontSize: "0.75rem", color: "#4b5563", fontWeight: 600 }}>{eliminatedPlayers.length}</span>
+          </div>
           {eliminatedPlayers.length === 0 ? (
-            <p className="muted">(ninguno)</p>
+            <p className="muted" style={{ fontSize: "0.85rem" }}>(ninguno)</p>
           ) : (
             <ul className="list">
               {eliminatedPlayers.map(p => (
                 <li key={p.id} data-dead="true">
                   <span>{p.name}</span>
-                  <span className="pill">Fuera</span>
+                  <span style={{ padding: "0.15rem 0.5rem", borderRadius: 999, fontSize: "0.7rem", fontWeight: 600, background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.2)" }}>
+                    Fuera
+                  </span>
                 </li>
               ))}
             </ul>
@@ -371,22 +417,28 @@ export default function Room() {
 
       {/* Rol privado */}
       {myRole && (
-        <div className="card mt4">
-          <h4 className="m0 mb3">Tu rol</h4>
+        <div className="card mt4" style={{ width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
+          <p style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280" }}>
+            Tu rol
+          </p>
           {myRole === "impostor" ? (
-            <div>🤫 Eres el <b>IMPOSTOR</b></div>
+            <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f87171" }}>🤫 Eres el IMPOSTOR</div>
           ) : (
-            <div>🕵️ Eres <b>JUGADOR</b> — Personaje: <b>{myCharacter}</b></div>
+            <div style={{ fontSize: "1rem", color: "#e5e7eb" }}>
+              🕵️ Eres <strong>JUGADOR</strong> — Personaje: <strong style={{ color: "#818cf8" }}>{myCharacter}</strong>
+            </div>
           )}
         </div>
       )}
 
-      {/* Logs (opcional para debug en dev) */}
+      {/* Logs */}
       {log.length > 0 && (
-        <div className="card mt4">
-          <h4 className="m0">Mensajes</h4>
-          <ul className="mt2">
-            {log.map((m, i) => <li key={i}>{m}</li>)}
+        <div className="card mt4" style={{ width: "100%", maxWidth: phase === "lobby" ? "600px" : undefined }}>
+          <h4 style={{ margin: "0 0 0.5rem", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6b7280" }}>
+            Mensajes
+          </h4>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {log.map((m, i) => <li key={i} style={{ fontSize: "0.85rem", padding: "0.25rem 0", color: "#9ca3af" }}>{m}</li>)}
           </ul>
         </div>
       )}
