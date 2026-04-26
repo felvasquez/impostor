@@ -1,6 +1,6 @@
 // Pantalla de fin de juego (fase "finished")
 
-export default function GameOverScreen({ result, onRestart }) {
+export default function GameOverScreen({ result, onRestart, isHost, onBackToLobby }) {
   const { winner, impostor, tally } = result;
   const playersWin = winner === "players";
 
@@ -164,9 +164,24 @@ export default function GameOverScreen({ result, onRestart }) {
           </div>
         )}
 
-        <button className="restart-btn" style={restartBtn} onClick={onRestart}>
-          Volver al inicio
-        </button>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", justifyContent: "center" }}>
+          {isHost && (
+            <button
+              style={{
+                ...restartBtn,
+                background: playersWin ? "#4f46e5" : "#dc2626",
+                color: "#fff",
+                border: "none",
+              }}
+              onClick={onBackToLobby}
+            >
+              Volver a la sala
+            </button>
+          )}
+          <button className="restart-btn" style={restartBtn} onClick={onRestart}>
+            Volver al inicio
+          </button>
+        </div>
       </div>
     </>
   );

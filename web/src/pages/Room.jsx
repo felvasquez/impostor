@@ -155,6 +155,17 @@ export default function Room() {
       if (starter) setStarterName(starter);
     };
 
+    const onReturnedToLobby = () => {
+      setPhase("lobby");
+      setMyRole(null);
+      setMyCharacter(null);
+      setLastResult(null);
+      setVoteCandidates([]);
+      setMyVoteLocked(false);
+      setStarterName(null);
+      setShowStarter(false);
+    };
+
     socket.off("connect", onConnect).on("connect", onConnect);
     socket.off("disconnect", onDisconnect).on("disconnect", onDisconnect);
     socket.off("roomUpdate", onRoomUpdate).on("roomUpdate", onRoomUpdate);
@@ -166,6 +177,7 @@ export default function Room() {
     socket.off("gameOver", onGameOver).on("gameOver", onGameOver);
     socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
     socket.off("rejoinSync", onRejoinSync).on("rejoinSync", onRejoinSync);
+    socket.off("returnedToLobby", onReturnedToLobby).on("returnedToLobby", onReturnedToLobby);
 
     // Sin nombre aún: esperar a que RoomWelcome lo provea
     if (!name) return;
@@ -205,6 +217,11 @@ export default function Room() {
     socket.emit("resumeAfterVote", { roomId, hostKey }, (ok) => {
       if (!ok) setLog(p => [...p, "❌ No se pudo reanudar (verifica host/estado)"]);
     });
+  };
+
+  const handleBackToLobby = () => {
+    if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
+    socket.emit("backToLobby", { roomId, hostKey });
   };
 
   // --- Voto ---
@@ -275,6 +292,8 @@ export default function Room() {
       <GameOverScreen
         result={lastResult}
         onRestart={() => navigate("/")}
+        isHost={isHost}
+        onBackToLobby={handleBackToLobby}
       />
     );
   }

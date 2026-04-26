@@ -355,6 +355,39 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("backToLobby", ({ roomId, hostKey }) => {
+    roomId = String(roomId || "").trim().toUpperCase();
+    const room = rooms.get(roomId);
+    if (!room) return;
+
+    if (!assertHost(room, hostKey) || room.hostPlayerId !== socket.id) {
+      socket.emit("errorMessage", "No autorizado para volver a la sala.");
+      return;
+    }
+
+    // Reiniciar estado de juego
+    room.round = null;
+    room.finished = false;
+    room.votes = {};
+    room.voters = new Set();
+    room.lastPhase = "lobby";
+
+    // Revivir a todos
+    room.players.forEach(p => {
+      p.alive = true;
+    });
+
+    // Actualizar listas en UI
+    io.to(roomId).emit("roomUpdate", {
+      players: room.players,
+      hostPlayerId: room.hostPlayerId
+    });
+
+    // Avisar que volvemos al lobby
+    io.to(roomId).emit("returnedToLobby");
+    console.log(`🏠 Sala ${roomId} reiniciada a lobby por el host.`);
+  });
+
   socket.on("disconnect", () => {
     rooms.forEach((room, id) => {
       const before = room.players.length;
