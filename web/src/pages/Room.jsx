@@ -13,6 +13,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { socket } from "../socket";
 import RoleReveal from "../components/RoleReveal";
 import StarterReveal from "../components/StarterReveal";
+import ClueScreen from "../components/ClueScreen";
 import RoomWelcome from "../components/RoomWelcome";
 import VoteScreen from "../components/VoteScreen";
 import ResultScreen from "../components/ResultScreen";
@@ -47,6 +48,10 @@ export default function Room() {
   const [showReveal, setShowReveal] = useState(false);
   const [starterName, setStarterName] = useState(null);
   const [showStarter, setShowStarter] = useState(false);
+
+  // Pistas (modo online)
+  const [clues, setClues] = useState([]);
+  const [currentTurnId, setCurrentTurnId] = useState(null);
 
 
   // Mostrar StarterReveal cuando phase pasa a "active" y hay un starter asignado
@@ -93,12 +98,18 @@ export default function Room() {
 
     const onError = (msg) => setLog((p) => [...p, `❌ ${msg}`]);
 
-    const onGameStarted = ({ starterName: starter } = {}) => {
+    const onGameStarted = ({ starterName: starter, phase: newPhase, clueOrder } = {}) => {
       console.log("[gameStarted] starter recibido:", starter);
-      setPhase("active");
+      setPhase(newPhase || "active");
       setLastResult(null);
       setVoteCandidates([]);
       setMyVoteLocked(false);
+      setClues([]);
+      if (clueOrder && clueOrder.length > 0) {
+        setCurrentTurnId(clueOrder[0]);
+      } else {
+        setCurrentTurnId(null);
+      }
       if (starter) {
         setStarterName(starter);
         setShowStarter(true);
@@ -146,13 +157,20 @@ export default function Room() {
       }
     };
 
-    const onRejoinSync = ({ phase, role, character, starterName: starter }) => {
+    const onRejoinSync = ({ phase, role, character, starterName: starter, clues, currentTurnId }) => {
       setPhase(phase);
       if (role) {
         setMyRole(role);
         setMyCharacter(character || null);
       }
       if (starter) setStarterName(starter);
+      if (clues) setClues(clues);
+      if (currentTurnId) setCurrentTurnId(currentTurnId);
+    };
+
+    const onClueUpdated = ({ clues, currentTurnId }) => {
+      setClues(clues || []);
+      setCurrentTurnId(currentTurnId || null);
     };
 
     const onReturnedToLobby = () => {
@@ -164,6 +182,8 @@ export default function Room() {
       setMyVoteLocked(false);
       setStarterName(null);
       setShowStarter(false);
+      setClues([]);
+      setCurrentTurnId(null);
     };
 
     socket.off("connect", onConnect).on("connect", onConnect);
@@ -178,6 +198,7 @@ export default function Room() {
     socket.off("roundResumed", onRoundResumed).on("roundResumed", onRoundResumed);
     socket.off("rejoinSync", onRejoinSync).on("rejoinSync", onRejoinSync);
     socket.off("returnedToLobby", onReturnedToLobby).on("returnedToLobby", onReturnedToLobby);
+    socket.off("clueUpdated", onClueUpdated).on("clueUpdated", onClueUpdated);
 
     // Sin nombre aún: esperar a que RoomWelcome lo provea
     if (!name) return;
@@ -224,6 +245,10 @@ export default function Room() {
     socket.emit("backToLobby", { roomId, hostKey });
   };
 
+  const handleSubmitClue = (text) => {
+    socket.emit("submitClue", { roomId, clueText: text });
+  };
+
   // --- Voto ---
   const handleCastVote = (targetId) => {
     if (!targetId || myVoteLocked) return;
@@ -265,6 +290,18 @@ export default function Room() {
     );
   }
 
+  if (phase === "clue_phase") {
+    return (
+      <ClueScreen
+        clues={clues}
+        currentTurnId={currentTurnId}
+        mySocketId={mySocketId}
+        onSubmitClue={handleSubmitClue}
+        players={players}
+      />
+    );
+  }
+
   if (phase === "vote") {
     return (
       <VoteScreen
@@ -273,6 +310,7 @@ export default function Room() {
         iAmAlive={iAmAlive}
         voteLocked={myVoteLocked}
         onVote={handleCastVote}
+        clues={clues}
       />
     );
   }

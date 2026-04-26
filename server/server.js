@@ -35,7 +35,7 @@ function assertHost(room, payloadHostKey) {
 }
 
 app.post("/api/rooms", (req, res) => {
-  const { maxPlayers = 8, impostors = 1 } = req.body || {};
+  const { maxPlayers = 8, impostors = 1, mode = "live" } = req.body || {};
 
   const hostKey = crypto.randomBytes(16).toString("hex").toUpperCase();
   const roomId = crypto.randomBytes(3).toString("hex").toUpperCase(); // 6 hex
@@ -47,6 +47,7 @@ app.post("/api/rooms", (req, res) => {
     players: [],          // { id, name, alive }
     impostors,
     maxPlayers,
+    mode,
     round: null,          // { character, impostorIds[] }
     finished: false,
     votes: {},            // Record<targetId, count>
@@ -78,6 +79,7 @@ io.on("connection", (socket) => {
         players: [],
         impostors: 1,
         maxPlayers: 12,
+        mode: "live",
         round: null,
         finished: false,
         votes: {},
@@ -132,6 +134,8 @@ io.on("connection", (socket) => {
         role: isImpostor ? "impostor" : "player",
         character: isImpostor ? null : room.round.character,
         starterName: room.round.starterName || null,
+        clues: room.round.clues || [],
+        currentTurnId: room.round.clueOrder ? room.round.clueOrder[room.round.currentClueIndex] : null,
       });
 
       // Si estaba en votación, reenviar candidatos
@@ -178,7 +182,17 @@ io.on("connection", (socket) => {
     room.finished = false;
     room.votes = {};
     room.voters = new Set();
-    room.lastPhase = "active";
+    
+    if (room.mode === "online") {
+      const starterIndex = shuffled.findIndex(p => p.id === starter.id);
+      const clueOrder = [...shuffled.slice(starterIndex), ...shuffled.slice(0, starterIndex)].map(p => p.id);
+      room.round.clueOrder = clueOrder;
+      room.round.currentClueIndex = 0;
+      room.round.clues = [];
+      room.lastPhase = "clue_phase";
+    } else {
+      room.lastPhase = "active";
+    }
 
     room.players.forEach((p) => {
       const isImpostor = impostorIds.includes(p.id);
@@ -190,7 +204,7 @@ io.on("connection", (socket) => {
 
     const starterName = starter.name;
     console.log(`🎭 Partida iniciada (${roomId}) con "${character}" — empieza: ${starterName}`);
-    io.to(roomId).emit("gameStarted", { starterName });
+    io.to(roomId).emit("gameStarted", { starterName, phase: room.lastPhase, clueOrder: room.round.clueOrder });
   });
 
   socket.on("startVote", ({ roomId, hostKey }) => {
@@ -219,6 +233,50 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("voteStarted", {
       players: room.players.filter(p => p.alive)
     });
+  });
+
+  socket.on("submitClue", ({ roomId, clueText }) => {
+    roomId = String(roomId || "").trim().toUpperCase();
+    const room = rooms.get(roomId);
+    if (!room || room.lastPhase !== "clue_phase" || !room.round) return;
+
+    const currentTurnId = room.round.clueOrder[room.round.currentClueIndex];
+    if (socket.id !== currentTurnId) {
+      socket.emit("errorMessage", "No es tu turno.");
+      return;
+    }
+
+    const player = room.players.find(p => p.id === socket.id);
+    if (!player) return;
+
+    room.round.clues.push({
+      playerId: player.id,
+      playerName: player.name,
+      text: clueText
+    });
+
+    room.round.currentClueIndex++;
+
+    const isDone = room.round.currentClueIndex >= room.round.clueOrder.length;
+
+    if (isDone) {
+      room.lastPhase = "vote";
+      io.to(roomId).emit("clueUpdated", {
+        clues: room.round.clues,
+        currentTurnId: null
+      });
+      room.votes = {};
+      room.voters = new Set();
+      io.to(roomId).emit("voteStarted", {
+        players: room.players.filter(p => p.alive)
+      });
+    } else {
+      const nextTurnId = room.round.clueOrder[room.round.currentClueIndex];
+      io.to(roomId).emit("clueUpdated", {
+        clues: room.round.clues,
+        currentTurnId: nextTurnId
+      });
+    }
   });
 
   socket.on("castVote", ({ roomId, targetId }) => {

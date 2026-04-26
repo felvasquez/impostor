@@ -6,6 +6,7 @@ export default function Create() {
   const [hostName, setHostName] = useState("");
   const [maxPlayers, setMaxPlayers] = useState("8");
   const [impostors, setImpostors] = useState("1");
+  const [mode, setMode] = useState("live"); // "live" o "online"
   const [loading, setLoading] = useState(false);
 
   const handleCreate = async () => {
@@ -20,7 +21,11 @@ export default function Create() {
       const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/rooms`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ maxPlayers: Number(maxPlayers) || 8, impostors: Number(impostors) || 1 })
+        body: JSON.stringify({ 
+          maxPlayers: Number(maxPlayers) || 8, 
+          impostors: Number(impostors) || 1,
+          mode: mode
+        })
       });
 
       if (!res.ok) {
@@ -103,6 +108,37 @@ export default function Create() {
             value={impostors}
             onChange={(e) => setImpostors(e.target.value)}
           />
+        </div>
+
+        <div className="mt3">
+          <label style={labelStyle}>Modo de Juego</label>
+          <div style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#e5e7eb", fontSize: "0.9rem", cursor: "pointer" }}>
+              <input 
+                type="radio" 
+                name="mode" 
+                value="live" 
+                checked={mode === "live"} 
+                onChange={(e) => setMode(e.target.value)} 
+                style={{ cursor: "pointer" }}
+              />
+              En vivo
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#e5e7eb", fontSize: "0.9rem", cursor: "pointer" }}>
+              <input 
+                type="radio" 
+                name="mode" 
+                value="online" 
+                checked={mode === "online"} 
+                onChange={(e) => setMode(e.target.value)} 
+                style={{ cursor: "pointer" }}
+              />
+              En Línea
+            </label>
+          </div>
+          <p style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.4rem" }}>
+            {mode === "live" ? "Hablen en persona y voten al final." : "Cada jugador escribirá una pista por turnos antes de votar."}
+          </p>
         </div>
 
         <div className="actions mt4">

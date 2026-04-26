@@ -1,6 +1,6 @@
 // Pantalla de votación a pantalla completa con botones por jugador
 
-export default function VoteScreen({ candidates, mySocketId, iAmAlive, voteLocked, onVote }) {
+export default function VoteScreen({ candidates, mySocketId, iAmAlive, voteLocked, onVote, clues = [] }) {
   const votable = candidates.filter(p => p.id !== mySocketId);
 
   const overlay = {
@@ -102,6 +102,20 @@ export default function VoteScreen({ candidates, mySocketId, iAmAlive, voteLocke
         <div style={{ fontSize: "clamp(2.5rem, 10vw, 4rem)", marginBottom: "0.5rem" }}>🗳️</div>
         <h1 style={title}>VOTACIÓN</h1>
         <p style={subtitle}>¿Quién es el impostor? Elige a quién eliminar.</p>
+
+        {clues && clues.length > 0 && (
+          <div style={{ width: "100%", maxWidth: "600px", marginBottom: "2rem", background: "rgba(255,255,255,0.05)", padding: "1rem", borderRadius: "12px" }}>
+            <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#e5e7eb", textTransform: "uppercase", letterSpacing: "0.05em" }}>Pistas Dadas</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {clues.map((clue, idx) => (
+                <div key={idx} style={{ padding: "0.5rem", borderBottom: idx < clues.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none" }}>
+                  <span style={{ fontWeight: 700, color: "#9ca3af", marginRight: "0.5rem" }}>{clue.playerName}:</span>
+                  <span style={{ color: "#e5e7eb", fontStyle: "italic" }}>"{clue.text}"</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {iAmAlive ? (
           <>
