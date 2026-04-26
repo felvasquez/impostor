@@ -240,6 +240,11 @@ export default function Room() {
     });
   };
 
+  const handleRestartVote = () => {
+    if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
+    socket.emit("startVote", { roomId, hostKey });
+  };
+
   const handleBackToLobby = () => {
     if (!isHost) return setLog(p=>[...p,"⚠️ No sos host"]);
     socket.emit("backToLobby", { roomId, hostKey });
@@ -321,6 +326,7 @@ export default function Room() {
         result={lastResult}
         isHost={isHost}
         onContinue={handleResumeAfterVote}
+        onRestartVote={handleRestartVote}
       />
     );
   }

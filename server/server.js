@@ -330,7 +330,25 @@ io.on("connection", (socket) => {
         .sort((a, b) => b.count - a.count);
 
       // Más votado
-      const [mostVotedId] = Object.entries(room.votes).sort((a, b) => b[1] - a[1])[0];
+      const sortedVotes = Object.entries(room.votes).sort((a, b) => b[1] - a[1]);
+      const [mostVotedId, highestCount] = sortedVotes[0] || [null, 0];
+      const isTie = sortedVotes.length > 1 && sortedVotes[1][1] === highestCount;
+
+      if (isTie) {
+        room.votes = {};
+        room.voters = new Set();
+        room.lastPhase = "result";
+        io.to(roomId).emit("voteResult", {
+          isTie: true,
+          eliminated: null,
+          wasImpostor: false,
+          alivePlayers: room.players.filter(p => p.alive),
+          tally
+        });
+        console.log(`⚖️ Empate en votación (${roomId}). A la espera del host para reintentar.`);
+        return;
+      }
+
       const eliminated = room.players.find(p => p.id === mostVotedId);
       const wasImpostor = room.round.impostorIds.includes(mostVotedId);
 

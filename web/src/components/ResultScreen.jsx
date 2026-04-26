@@ -1,7 +1,7 @@
 // Pantalla de resultado de votación (fase "result")
 
-export default function ResultScreen({ result, isHost, onContinue }) {
-  const { eliminated, wasImpostor, tally } = result;
+export default function ResultScreen({ result, isHost, onContinue, onRestartVote }) {
+  const { eliminated, wasImpostor, tally, isTie } = result;
 
   const overlay = {
     position: "fixed",
@@ -121,16 +121,26 @@ export default function ResultScreen({ result, isHost, onContinue }) {
         .continue-btn:active { transform: translateY(1px); }
       `}</style>
       <div style={overlay}>
-        <div style={icon}>{wasImpostor ? "✅" : "❌"}</div>
-        <h1 style={title}>
-          {wasImpostor ? "¡Impostor encontrado!" : "No era el impostor"}
-        </h1>
-        <div style={nameTag}>{eliminated || "Desconocido"}</div>
-        <p style={verdict}>
-          {wasImpostor
-            ? "fue eliminado correctamente. ¡Buen trabajo!"
-            : "fue eliminado por error. El impostor sigue entre ustedes…"}
-        </p>
+        {isTie ? (
+          <>
+            <div style={icon}>⚖️</div>
+            <h1 style={{...title, color: "#94a3b8", textShadow: "0 0 30px rgba(148,163,184,0.5)"}}>¡Hubo un Empate!</h1>
+            <p style={verdict}>Nadie fue eliminado. La votación se debe repetir.</p>
+          </>
+        ) : (
+          <>
+            <div style={icon}>{wasImpostor ? "✅" : "❌"}</div>
+            <h1 style={title}>
+              {wasImpostor ? "¡Impostor encontrado!" : "No era el impostor"}
+            </h1>
+            <div style={nameTag}>{eliminated || "Desconocido"}</div>
+            <p style={verdict}>
+              {wasImpostor
+                ? "fue eliminado correctamente. ¡Buen trabajo!"
+                : "fue eliminado por error. El impostor sigue entre ustedes…"}
+            </p>
+          </>
+        )}
 
         {tally && tally.length > 0 && (
           <div style={tallyBox}>
@@ -154,9 +164,9 @@ export default function ResultScreen({ result, isHost, onContinue }) {
           <button
             className="continue-btn"
             style={continueBtn}
-            onClick={onContinue}
+            onClick={isTie ? onRestartVote : onContinue}
           >
-            Continuar la ronda →
+            {isTie ? "Reintentar Votación →" : "Continuar la ronda →"}
           </button>
         ) : (
           <p style={waitMsg}>⏳ Esperando que el host continúe la ronda…</p>
